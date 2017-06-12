@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">camera_library</string>
+
+    <string name="camera_unavailable">相机不可用.</string>
+    <string name="face_not_detected">未检测到人脸.</string>
+    <string name="face_detection_not_support">该设备不支持人脸检测.</string>
+</resources>

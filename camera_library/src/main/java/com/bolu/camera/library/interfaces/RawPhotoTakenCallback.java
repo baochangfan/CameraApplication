@@ -1,0 +1,10 @@
+package com.bolu.camera.library.interfaces;
+
+/**
+ * Created by Administrator on 2017/4/10.
+ */
+
+public interface RawPhotoTakenCallback {
+
+    void rawPhotoTaken(byte[] data);
+}

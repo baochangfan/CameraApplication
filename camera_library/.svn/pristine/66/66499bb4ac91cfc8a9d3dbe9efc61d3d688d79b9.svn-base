@@ -1,0 +1,46 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/camera_background"
+    tools:context="com.bolu.camera.library.fragment.CameraFragment">
+
+    <FrameLayout
+        android:id="@+id/camera_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+    </FrameLayout>
+    <FrameLayout
+        android:layout_below="@id/camera_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/sheet_shadow"/>
+    <!-- control components container-->
+    <RelativeLayout
+        android:id="@+id/controls_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+        <!-- capture button -->
+        <ImageButton
+            android:id="@+id/capture"
+            android:src="@drawable/camera_capture"
+            android:background="@null"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_margin="@dimen/small_margin"/>
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignStart="@id/capture"
+            android:layout_alignLeft="@id/capture"
+            android:layout_alignTop="@id/capture"
+            android:layout_alignEnd="@id/capture"
+            android:layout_alignRight="@id/capture"
+            android:layout_alignBottom="@id/capture"
+            android:visibility="gone"/>
+    </RelativeLayout>
+</RelativeLayout>
