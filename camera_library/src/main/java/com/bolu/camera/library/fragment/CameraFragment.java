@@ -421,6 +421,8 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
             }
         });
         if(auto_take_photo){
+            progressBar.setVisibility(View.INVISIBLE);
+            mCaptureButton.setVisibility(View.INVISIBLE);
             mCaptureButton.performClick();
         }
         setPreviewContainerSize(mScreenWidth, mScreenHeight, ratio);
@@ -471,6 +473,7 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     private void takePhoto(){
         mCaptureButton.setEnabled(false);
         mCaptureButton.setVisibility(View.INVISIBLE);
+
         if (progressBar != null) {
             progressBar.setVisibility(View.VISIBLE);
         }
@@ -479,8 +482,10 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
 
     @Override
     public void photoSaved(String path, String name) {
-        mCaptureButton.setEnabled(true);
-        mCaptureButton.setVisibility(View.VISIBLE);
+        if(!auto_take_photo) {
+            mCaptureButton.setEnabled(true);
+            mCaptureButton.setVisibility(View.VISIBLE);
+        }
         if (progressBar != null) {
             progressBar.setVisibility(View.GONE);
         }

@@ -84,7 +84,7 @@ public class CameraControl extends AppCompatActivity implements PhotoTakenCallba
         bundle.putInt(CameraFragment.QUALITY, quality);//0
         bundle.putBoolean(CameraFragment.FRONT_CAMERA, useFrontCamera);//false
         bundle.putBoolean(CameraFragment.FACE_DETECTION, useFaceDetection);//false
-        bundle.putBoolean(CameraFragment.AUTO_TAKE_PHOTO, true);//false
+        bundle.putBoolean(CameraFragment.AUTO_TAKE_PHOTO, false);//false
         return bundle;
     }
 
