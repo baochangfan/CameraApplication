@@ -454,7 +454,7 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         }else {
             if(!isAuto_take_photo) {
                 isAuto_take_photo = true;
-                Toast.makeText(activity, "3秒后拍照...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(activity, "3秒后自动拍照...", Toast.LENGTH_SHORT).show();
                 Timer timer = new Timer();
                 TimerTask task = new TimerTask() {
                     @Override
