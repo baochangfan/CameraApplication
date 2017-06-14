@@ -376,7 +376,7 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
                         try {
                             camera.setParameters(params);
                             setCameraDisplayOrientation(activity, cameraId, camera);
-                            Log.w(TAG, "orientation="+orientation);
+                            //Log.w(TAG, "orientation="+orientation);
                         } catch (Exception e) {
                             Log.e(TAG, "Exception updating camera parameters in orientation change", e);
                         }
