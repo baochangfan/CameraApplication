@@ -55,6 +55,7 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     public static final String FRONT_CAMERA = "front_camera";
     public static final String FACE_DETECTION = "face_detection";
     public static final String AUTO_TAKE_PHOTO = "auto_take_photo";
+    public static final String CAMERA_DISPLAY_LANDSCAPE= "camera_display_landscape";
 
     private Quality quality;
     private Ratio ratio;
@@ -63,6 +64,7 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     private FocusMode focusMode;
     private boolean useFrontCamera;
     private boolean useFaceDetectionTech;
+    private boolean camera_display_landscape;
 
     private int cameraId;
     private Camera camera;
@@ -132,6 +134,8 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         camera = getCameraInstance(useFrontCamera);
         auto_take_photo = getArguments().getBoolean(AUTO_TAKE_PHOTO, false);
         isAuto_take_photo = false;
+        camera_display_landscape = getArguments().getBoolean(CAMERA_DISPLAY_LANDSCAPE, false);
+
         if (camera == null) {
             return;
         }
@@ -181,6 +185,9 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         setPreviewSize(parameters, ratio);
         setPictureSize(parameters, quality, ratio);
         camera.setParameters(parameters);
+        if(camera_display_landscape){
+            toSetCameraDisplay(100,-1);
+        }
     }
     /**
      * A safe way to get an instance of the Camera object.
@@ -365,23 +372,26 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         orientationListener = new OrientationEventListener(activity) {
             @Override
             public void onOrientationChanged(int orientation) {
-                if (camera != null && orientation != ORIENTATION_UNKNOWN) {
-                    int newOutputOrientation = getCameraPictureRotation(orientation);
-                    if (newOutputOrientation != outputOrientation) {
-                        outputOrientation = newOutputOrientation;
-                        Camera.Parameters params = camera.getParameters();
-                        params.setRotation(outputOrientation);
-                        try {
-                            camera.setParameters(params);
-                            setCameraDisplayOrientation(activity, cameraId, camera);
-                            //Log.w(TAG, "orientation="+orientation);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Exception updating camera parameters in orientation change", e);
-                        }
-                    }
-                }
+                toSetCameraDisplay(orientation,ORIENTATION_UNKNOWN);
             }
         };
+    }
+    private void toSetCameraDisplay(int orientation, int orientationNum) {
+        if (camera != null && orientation != orientationNum) {
+            int newOutputOrientation = getCameraPictureRotation(orientation);
+            if (newOutputOrientation != outputOrientation) {
+                outputOrientation = newOutputOrientation;
+                Camera.Parameters params = camera.getParameters();
+                params.setRotation(outputOrientation);
+                try {
+                    camera.setParameters(params);
+                    setCameraDisplayOrientation(activity, cameraId, camera);
+                    Log.w(TAG, "orientation="+orientationNum);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception updating camera parameters in orientation change", e);
+                }
+            }
+        }
     }
     public static void setCameraDisplayOrientation(Activity activity, int cameraId, android.hardware.Camera camera) {
         android.hardware.Camera.CameraInfo info =
