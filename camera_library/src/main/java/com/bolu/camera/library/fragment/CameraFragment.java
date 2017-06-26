@@ -182,8 +182,12 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         if (supportedAutoFocus){
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
         }
-        setPreviewSize(parameters, ratio);
-        setPictureSize(parameters, quality, ratio);
+        try{
+            setPreviewSize(parameters, ratio);
+            setPictureSize(parameters, quality, ratio);
+        } catch (NullPointerException e){
+            Log.e(TAG, "error,"+e);
+        }
         camera.setParameters(parameters);
         if(camera_display_landscape){
             toSetCameraDisplay(100,-1);
