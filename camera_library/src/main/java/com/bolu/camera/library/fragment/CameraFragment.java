@@ -1,27 +1,37 @@
-package com.bolu.camera.library.fragment;
+//
+// Source code recreated from a .class file by IntelliJ IDEA
+// (powered by Fernflower decompiler)
+//
 
+package com.bolu.camera.library.fragment;
 
 import android.app.Activity;
 import android.app.Fragment;
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Rect;
 import android.hardware.Camera;
+import android.hardware.Camera.CameraInfo;
+import android.hardware.Camera.Face;
+import android.hardware.Camera.Parameters;
+import android.hardware.Camera.PictureCallback;
+import android.hardware.Camera.ShutterCallback;
+import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.OrientationEventListener;
-import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.View.OnClickListener;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
-
-import com.bolu.camera.library.R;
+import android.widget.RelativeLayout.LayoutParams;
+import com.bolu.camera.library.R.id;
+import com.bolu.camera.library.R.layout;
+import com.bolu.camera.library.R.string;
 import com.bolu.camera.library.interfaces.FaceDetectionCallback;
 import com.bolu.camera.library.interfaces.PhotoSavedListener;
 import com.bolu.camera.library.interfaces.PhotoTakenCallback;
@@ -32,23 +42,17 @@ import com.bolu.camera.library.model.HDRMode;
 import com.bolu.camera.library.model.Quality;
 import com.bolu.camera.library.model.Ratio;
 import com.bolu.camera.library.surface.CameraPreview;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link CameraFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
 public class CameraFragment extends Fragment implements PhotoSavedListener {
     private static final String TAG = "CameraFragment";
-
     public static final String QUALITY = "quality";
     public static final String RATIO = "ratio";
     public static final String FOCUS_MODE = "focus_mode";
@@ -57,8 +61,7 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     public static final String FRONT_CAMERA = "front_camera";
     public static final String FACE_DETECTION = "face_detection";
     public static final String AUTO_TAKE_PHOTO = "auto_take_photo";
-    public static final String CAMERA_DISPLAY_LANDSCAPE= "camera_display_landscape";
-
+    public static final String CAMERA_DISPLAY_LANDSCAPE = "camera_display_landscape";
     private Quality quality;
     private Ratio ratio;
     private HDRMode hdrMode;
@@ -67,22 +70,18 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     private boolean useFrontCamera;
     private boolean useFaceDetectionTech;
     private boolean camera_display_landscape;
-
     private int cameraId;
     private Camera camera;
-
     private OrientationEventListener orientationListener;
-    private OnFaceDetectionCallback faceDetectionCallback;
+    private CameraFragment.OnFaceDetectionCallback faceDetectionCallback;
     private Activity activity;
     private int mScreenWidth;
     private int mScreenHeight;
     private int mNavigationBarHeight;
     private int mStatusBarHeight;
-
-    private Map<Ratio, Camera.Size> previewSizes;
-    private Map<Ratio, Map<Quality, Camera.Size>> pictureSizes;
-    private Camera.Parameters parameters;
-
+    private Map<Ratio, Size> previewSizes;
+    private Map<Ratio, Map<Quality, Size>> pictureSizes;
+    private Parameters parameters;
     private boolean supportedHDR = false;
     private boolean supportedFlash = false;
     private boolean supportedAutoFocus = false;
@@ -97,6 +96,24 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     private boolean faceDetected = false;
     private boolean auto_take_photo = false;
     private boolean isAuto_take_photo;
+    private PictureCallback pictureCallback = new PictureCallback() {
+        public void onPictureTaken(byte[] data, Camera camera) {
+            if(CameraFragment.this.callback != null) {
+                CameraFragment.this.callback.photoTaken((byte[])data.clone(), CameraFragment.this.outputOrientation);
+            }
+
+            camera.startPreview();
+            CameraFragment.this.cameraPreview.onPictureTaken();
+        }
+    };
+    private PictureCallback rawPictureCallback = new PictureCallback() {
+        public void onPictureTaken(byte[] data, Camera camera) {
+            if(CameraFragment.this.rawCallback != null && data != null) {
+                CameraFragment.this.rawCallback.rawPhotoTaken((byte[])data.clone());
+            }
+
+        }
+    };
 
     public void setCallback(PhotoTakenCallback callback) {
         this.callback = callback;
@@ -105,7 +122,6 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
     public void setRawCallback(RawPhotoTakenCallback rawCallback) {
         this.rawCallback = rawCallback;
     }
-
 
     public CameraFragment() {
     }
@@ -117,497 +133,492 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         return fragment;
     }
 
-    @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         this.activity = activity;
     }
 
-    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        useFrontCamera = getArguments().getBoolean(FRONT_CAMERA, false);
-        ratio = Ratio.getRatioById(getArguments().getInt(RATIO, Ratio.R_16x9.getId()));
-        quality = Quality.getQualityById(getArguments().getInt(QUALITY, Quality.HIGH.getId()));
-        flashMode = FlashMode.getFlashModeById(getArguments().getInt(FLASH_MODE, FlashMode.AUTO.getId()));
-        focusMode = FocusMode.getFocusModeById(getArguments().getInt(FOCUS_MODE, FocusMode.AUTO.getId()));
-        hdrMode = HDRMode.getHDRModeById(getArguments().getInt(HDR_MODE, HDRMode.NONE.getId()));
-        useFaceDetectionTech = getArguments().getBoolean(FACE_DETECTION, false);
-        camera = getCameraInstance(useFrontCamera);
-        auto_take_photo = getArguments().getBoolean(AUTO_TAKE_PHOTO, false);
-        isAuto_take_photo = false;
-        camera_display_landscape = getArguments().getBoolean(CAMERA_DISPLAY_LANDSCAPE, false);
-
-        if (camera == null) {
-            return;
+        this.useFrontCamera = this.getArguments().getBoolean("front_camera", false);
+        this.ratio = Ratio.getRatioById(this.getArguments().getInt("ratio", Ratio.R_16x9.getId()));
+        this.quality = Quality.getQualityById(this.getArguments().getInt("quality", Quality.HIGH.getId()));
+        this.flashMode = FlashMode.getFlashModeById(this.getArguments().getInt("flash_mode", FlashMode.AUTO.getId()));
+        this.focusMode = FocusMode.getFocusModeById(this.getArguments().getInt("focus_mode", FocusMode.AUTO.getId()));
+        this.hdrMode = HDRMode.getHDRModeById(this.getArguments().getInt("hdr_mode", HDRMode.NONE.getId()));
+        this.useFaceDetectionTech = this.getArguments().getBoolean("face_detection", false);
+        this.camera = this.getCameraInstance(this.useFrontCamera);
+        this.auto_take_photo = this.getArguments().getBoolean("auto_take_photo", false);
+        this.isAuto_take_photo = false;
+        this.camera_display_landscape = this.getArguments().getBoolean("camera_display_landscape", false);
+        if(this.camera != null) {
+            this.initScreenParams();
+            this.parameters = this.camera.getParameters();
+            this.previewSizes = this.buildPreviewSizesRatioMap(this.parameters.getSupportedPreviewSizes());
+            this.pictureSizes = this.buildPictureSizesRatioMap(this.parameters.getSupportedPictureSizes());
+            this.initCameraParams();
         }
-        initScreenParams();
-        parameters = camera.getParameters();
-        previewSizes = buildPreviewSizesRatioMap(parameters.getSupportedPreviewSizes());
-        pictureSizes = buildPictureSizesRatioMap(parameters.getSupportedPictureSizes());
-        initCameraParams();
     }
 
     private void initCameraParams() {
-        List<String> flashModes = parameters.getSupportedFlashModes();
-        if (flashModes != null && flashModes.size() > 1) { /* Device has flash */
-            for (String mode : flashModes){
-                if (mode.equals(flashMode)){
-                    supportedFlash = true;
+        List flashModes = this.parameters.getSupportedFlashModes();
+        if(flashModes != null && flashModes.size() > 1) {
+            Iterator sceneModes = flashModes.iterator();
+
+            while(sceneModes.hasNext()) {
+                String focusModes = (String)sceneModes.next();
+                if(focusModes.equals(this.flashMode)) {
+                    this.supportedFlash = true;
                     break;
                 }
             }
         }
-        List<String> sceneModes = parameters.getSupportedSceneModes();
-        if (sceneModes != null) {
-            for (String mode : sceneModes) {
-                if (mode.equals(Camera.Parameters.SCENE_MODE_HDR)) {
-                    supportedHDR = true;
+
+        List sceneModes1 = this.parameters.getSupportedSceneModes();
+        if(sceneModes1 != null) {
+            Iterator focusModes1 = sceneModes1.iterator();
+
+            while(focusModes1.hasNext()) {
+                String mode = (String)focusModes1.next();
+                if(mode.equals("hdr")) {
+                    this.supportedHDR = true;
                     break;
                 }
             }
         }
-        if (supportedFlash && flashMode != null){
-            parameters.setFlashMode(flashMode.name());
+
+        if(this.supportedFlash && this.flashMode != null) {
+            this.parameters.setFlashMode(this.flashMode.name());
         }
-        if (supportedHDR && hdrMode != null){
-            parameters.setSceneMode(Camera.Parameters.SCENE_MODE_AUTO);
+
+        if(this.supportedHDR && this.hdrMode != null) {
+            this.parameters.setSceneMode("auto");
         }
-        List<String> focusModes = parameters.getSupportedFocusModes();
-        if (focusModes != null){
-            for (String mode : focusModes){
-                if (mode.equals(Camera.Parameters.FOCUS_MODE_AUTO)){
-                    supportedAutoFocus = true;
+
+        List focusModes2 = this.parameters.getSupportedFocusModes();
+        if(focusModes2 != null) {
+            Iterator mode2 = focusModes2.iterator();
+
+            while(mode2.hasNext()) {
+                String mode1 = (String)mode2.next();
+                if(mode1.equals("auto")) {
+                    this.supportedAutoFocus = true;
                 }
             }
         }
-        if (supportedAutoFocus){
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+
+        if(this.supportedAutoFocus) {
+            this.parameters.setFocusMode("auto");
         }
         try{
-            setPreviewSize(parameters, ratio);
-            setPictureSize(parameters, quality, ratio);
-        } catch (NullPointerException e){
-            Log.e(TAG, "error,"+e);
+            this.setPreviewSize(this.parameters, this.ratio);
+            this.setPictureSize(this.parameters, this.quality, this.ratio);
+        }catch (NullPointerException e) {
+            Log.e(TAG, ","+e);
         }
-        camera.setParameters(parameters);
-        if(camera_display_landscape){
-            toSetCameraDisplay(100,-1);
+
+        this.camera.setParameters(this.parameters);
+        if(this.camera_display_landscape) {
+            this.toSetCameraDisplay(100, -1);
         }
+
     }
-    /**
-     * A safe way to get an instance of the Camera object.
-     */
+
     private Camera getCameraInstance(boolean useFrontCamera) {
         Camera c = null;
+
         try {
-            c = Camera.open(getCameraId(useFrontCamera));
-        } catch (Exception e) {
-            Log.e(TAG, "getCameraInstance: camera is unavailable.", e);
+            c = Camera.open(this.getCameraId(useFrontCamera));
+        } catch (Exception var4) {
+            Log.e("CameraFragment", "getCameraInstance: camera is unavailable.", var4);
         }
+
         return c;
     }
 
     private int getCameraId(boolean useFrontCamera) {
         int count = Camera.getNumberOfCameras();
         int result = -1;
-        if (count > 0) {
+        if(count > 0) {
             result = 0;
-            Camera.CameraInfo info = new Camera.CameraInfo();
-            for (int i = 0; i < count; i++) {
+            CameraInfo info = new CameraInfo();
+
+            for(int i = 0; i < count; ++i) {
                 Camera.getCameraInfo(i, info);
-                if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK
-                        && !useFrontCamera) {
+                if(info.facing == 0 && !useFrontCamera) {
                     result = i;
                     break;
-                } else if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT
-                        && useFrontCamera) {
+                }
+
+                if(info.facing == 1 && useFrontCamera) {
                     result = i;
                     break;
                 }
             }
         }
-        cameraId = result;
+
+        this.cameraId = result;
         return result;
     }
 
     private void initScreenParams() {
         DisplayMetrics metrics = new DisplayMetrics();
-        activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
-        mScreenWidth = metrics.widthPixels;
-        mScreenHeight = metrics.heightPixels;
-        mNavigationBarHeight = getNavigationBarHeight();
-        mStatusBarHeight = getStatusBarHeight();
+        this.activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        this.mScreenWidth = metrics.widthPixels;
+        this.mScreenHeight = metrics.heightPixels;
+        this.mNavigationBarHeight = this.getNavigationBarHeight();
+        this.mStatusBarHeight = this.getStatusBarHeight();
     }
 
     private int getNavigationBarHeight() {
-        return getPixelSizeByName("navigation_bar_height");
+        return this.getPixelSizeByName("navigation_bar_height");
     }
 
     private int getStatusBarHeight() {
-        return getPixelSizeByName("status_bar_height");
+        return this.getPixelSizeByName("status_bar_height");
     }
 
     private int getPixelSizeByName(String name) {
-        Resources resources = getResources();
+        Resources resources = this.getResources();
         int resourceId = resources.getIdentifier(name, "dimen", "android");
-        if (resourceId > 0) {
-            return resources.getDimensionPixelSize(resourceId);
-        }
-        return 0;
+        return resourceId > 0?resources.getDimensionPixelSize(resourceId):0;
     }
 
-    private Map<Ratio, Camera.Size> buildPreviewSizesRatioMap(List<Camera.Size> sizes) {
-        Map<Ratio, Camera.Size> map = new HashMap<>();
-        for (Camera.Size size : sizes) {
-            Ratio ratio = Ratio.pickRatio(size.width, size.height);
-            if (ratio != null) {
-                Camera.Size oldSize = map.get(ratio);
-                if (oldSize == null || (oldSize.width < size.width || oldSize.height < size.height)) {
-                    map.put(ratio, size);
-                }
-            }
+    private Map<Ratio, Size> buildPreviewSizesRatioMap(List<Size> sizes) {
+        HashMap map = new HashMap();
+        Iterator var3 = sizes.iterator();
+
+        while(true) {
+            Size size;
+            Ratio ratio;
+            Size oldSize;
+            do {
+                do {
+                    if(!var3.hasNext()) {
+                        return map;
+                    }
+
+                    size = (Size)var3.next();
+                    ratio = Ratio.pickRatio(size.width, size.height);
+                } while(ratio == null);
+
+                oldSize = (Size)map.get(ratio);
+            } while(oldSize != null && oldSize.width >= size.width && oldSize.height >= size.height);
+
+            map.put(ratio, size);
         }
-        return map;
     }
 
-    private Map<Ratio, Map<Quality, Camera.Size>> buildPictureSizesRatioMap(List<Camera.Size> sizes) {
-        Map<Ratio, Map<Quality, Camera.Size>> map = new HashMap<>();
-        Map<Ratio, List<Camera.Size>> ratioListMap = new HashMap<>();
-        for (Camera.Size size : sizes) {
-            Ratio ratio = Ratio.pickRatio(size.width, size.height);
-            if (ratio != null) {
-                List<Camera.Size> sizeList = ratioListMap.get(ratio);
-                if (sizeList == null) {
-                    sizeList = new ArrayList<>();
-                    ratioListMap.put(ratio, sizeList);
+    private Map<Ratio, Map<Quality, Size>> buildPictureSizesRatioMap(List<Size> sizes) {
+        HashMap map = new HashMap();
+        HashMap ratioListMap = new HashMap();
+        Iterator var4 = sizes.iterator();
+
+        while(var4.hasNext()) {
+            Size r = (Size)var4.next();
+            Ratio list = Ratio.pickRatio(r.width, r.height);
+            if(list != null) {
+                Object sizeMap = (List)ratioListMap.get(list);
+                if(sizeMap == null) {
+                    sizeMap = new ArrayList();
+                    ratioListMap.put(list, sizeMap);
                 }
-                sizeList.add(size);
+
+                ((List)sizeMap).add(r);
             }
         }
-        for (Ratio r : ratioListMap.keySet()) {
-            List<Camera.Size> list = ratioListMap.get(r);
-            ratioListMap.put(r, sortSizes(list));
-            Map<Quality, Camera.Size> sizeMap = new HashMap<>();
+
+        var4 = ratioListMap.keySet().iterator();
+
+        while(var4.hasNext()) {
+            Ratio var14 = (Ratio)var4.next();
+            List var15 = (List)ratioListMap.get(var14);
+            ratioListMap.put(var14, this.sortSizes(var15));
+            HashMap var16 = new HashMap();
             int i = 0;
-            for (Quality q : Quality.values()) {
-                Camera.Size size = null;
-                if (i < list.size()) {
-                    size = list.get(i++);
+            Quality[] var9 = Quality.values();
+            int var10 = var9.length;
+
+            for(int var11 = 0; var11 < var10; ++var11) {
+                Quality q = var9[var11];
+                Size size = null;
+                if(i < var15.size()) {
+                    size = (Size)var15.get(i++);
                 }
-                sizeMap.put(q, size);
+
+                var16.put(q, size);
             }
-            map.put(r, sizeMap);
+
+            map.put(var14, var16);
         }
+
         return map;
     }
 
-    private List<Camera.Size> sortSizes(List<Camera.Size> sizes) {
-        int count = sizes.size();
-        while (count > 2) {
-            for (int i = 0; i < count - 1; i++) {
-                Camera.Size current = sizes.get(i);
-                Camera.Size next = sizes.get(i + 1);
-                if (current.width < next.width || current.height < next.height) {
+    private List<Size> sortSizes(List<Size> sizes) {
+        for(int count = sizes.size(); count > 2; --count) {
+            for(int i = 0; i < count - 1; ++i) {
+                Size current = (Size)sizes.get(i);
+                Size next = (Size)sizes.get(i + 1);
+                if(current.width < next.width || current.height < next.height) {
                     sizes.set(i, next);
                     sizes.set(i + 1, current);
                 }
             }
-            count--;
         }
+
         return sizes;
     }
 
-
-
-
-    private void setPictureSize(Camera.Parameters parameters, Quality quality, Ratio ratio) {
-        Camera.Size size = pictureSizes.get(ratio).get(quality);
-        if (size != null) {
+    private void setPictureSize(Parameters parameters, Quality quality, Ratio ratio) {
+        Size size = (Size)((Map)this.pictureSizes.get(ratio)).get(quality);
+        if(size != null) {
             parameters.setPictureSize(size.width, size.height);
         }
+
     }
 
-    private void setPreviewSize(Camera.Parameters parameters, Ratio ratio) {
-        Camera.Size size = previewSizes.get(ratio);
+    private void setPreviewSize(Parameters parameters, Ratio ratio) {
+        Size size = (Size)this.previewSizes.get(ratio);
         parameters.setPreviewSize(size.width, size.height);
     }
 
-    /**
-     * @param width  Screen width
-     * @param height Screen height
-     * @param ratio  Required ratio
-     */
     private void setPreviewContainerSize(int width, int height, Ratio ratio) {
-        height = (width / ratio.h) * ratio.w;
-        previewContainer.setLayoutParams(new RelativeLayout.LayoutParams(width, height));
-    }
-
-    class OnFaceDetectionCallback implements FaceDetectionCallback {
-
-        @Override
-        public void onFaceDetection(Camera.Face[] faces, Camera camera) {
-            if (faces.length > 0){
-                Log.d(TAG, "face0 top: " + faces[0].rect.top + ",  bottom: " + faces[0].rect.bottom
-                        +", left: " + faces[0].rect.left + ", right: " + faces[0].rect.right);
-                faceDetected = true;
-                cameraPreview.drawFaceBounds(faces[0].rect, useFrontCamera);
-            }else{
-                faceDetected = false;
-                cameraPreview.drawFaceBounds(null, useFrontCamera);
-            }
-        }
-
-        @Override
-        public void onFaceDetectionNotSupport(Camera camera) {
-            supportedFaceDetection = false;
-            Toast.makeText(activity, R.string.face_detection_not_support, Toast.LENGTH_LONG).show();
-        }
-
-        @Override
-        public void onFaceDetectionStart(Camera camera) {
-            supportedFaceDetection = true;
-        }
-
-        @Override
-        public void onFaceDetectionStop(Camera camera) {
-        }
+        height = width / ratio.h * ratio.w;
+        this.previewContainer.setLayoutParams(new LayoutParams(width, height));
     }
 
     private void initOrientationListener() {
-        orientationListener = new OrientationEventListener(activity) {
-            @Override
+        this.orientationListener = new OrientationEventListener(this.activity) {
             public void onOrientationChanged(int orientation) {
-<<<<<<< HEAD
-                if (camera != null && orientation != ORIENTATION_UNKNOWN) {
-                    int newOutputOrientation = getCameraPictureRotation(orientation);
-                    if (newOutputOrientation != outputOrientation) {
-                        outputOrientation = newOutputOrientation;
-                        Camera.Parameters params = camera.getParameters();
-                        params.setRotation(outputOrientation);
-                        try {
-                            camera.setParameters(params);
-                            setCameraDisplayOrientation(activity, cameraId, camera);
-                            //Log.w(TAG, "orientation="+orientation);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Exception updating camera parameters in orientation change", e);
-                        }
-                    }
-                }
+                CameraFragment.this.toSetCameraDisplay(orientation, -1);
             }
         };
     }
-=======
-                toSetCameraDisplay(orientation,ORIENTATION_UNKNOWN);
-            }
-        };
-    }
+
     private void toSetCameraDisplay(int orientation, int orientationNum) {
-        if (camera != null && orientation != orientationNum) {
-            int newOutputOrientation = getCameraPictureRotation(orientation);
-            if (newOutputOrientation != outputOrientation) {
-                outputOrientation = newOutputOrientation;
-                Camera.Parameters params = camera.getParameters();
-                params.setRotation(outputOrientation);
+        if(this.camera != null && orientation != orientationNum) {
+            int newOutputOrientation = this.getCameraPictureRotation(orientation);
+            if(newOutputOrientation != this.outputOrientation) {
+                this.outputOrientation = newOutputOrientation;
+                Parameters params = this.camera.getParameters();
+                params.setRotation(this.outputOrientation);
+
                 try {
-                    camera.setParameters(params);
-                    setCameraDisplayOrientation(activity, cameraId, camera);
-                    Log.w(TAG, "orientation="+orientationNum);
-                } catch (Exception e) {
-                    Log.e(TAG, "Exception updating camera parameters in orientation change", e);
+                    this.camera.setParameters(params);
+                    setCameraDisplayOrientation(this.activity, this.cameraId, this.camera);
+                    Log.w("CameraFragment", "orientation=" + orientationNum);
+                } catch (Exception var6) {
+                    Log.e("CameraFragment", "Exception updating camera parameters in orientation change", var6);
                 }
             }
         }
+
     }
->>>>>>> 11134a6a7cedbc7123184c0f3ad790f59846c653
-    public static void setCameraDisplayOrientation(Activity activity, int cameraId, android.hardware.Camera camera) {
-        android.hardware.Camera.CameraInfo info =
-                new android.hardware.Camera.CameraInfo();
-        android.hardware.Camera.getCameraInfo(cameraId, info);
-        int rotation = activity.getWindowManager().getDefaultDisplay()
-                .getRotation();
-        int degrees = 0;
-        switch (rotation) {
-            case Surface.ROTATION_0: degrees = 0; break;
-            case Surface.ROTATION_90: degrees = 90; break;
-            case Surface.ROTATION_180: degrees = 180; break;
-            case Surface.ROTATION_270: degrees = 270; break;
+
+    public static void setCameraDisplayOrientation(Activity activity, int cameraId, Camera camera) {
+        CameraInfo info = new CameraInfo();
+        Camera.getCameraInfo(cameraId, info);
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        short degrees = 0;
+        switch(rotation) {
+            case 0:
+                degrees = 0;
+                break;
+            case 1:
+                degrees = 90;
+                break;
+            case 2:
+                degrees = 180;
+                break;
+            case 3:
+                degrees = 270;
         }
 
         int result;
-        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+        if(info.facing == 1) {
             result = (info.orientation + degrees) % 360;
-            result = (360 - result) % 360;  // compensate the mirror
-        } else {  // back-facing
+            result = (360 - result) % 360;
+        } else {
             result = (info.orientation - degrees + 360) % 360;
         }
+
         camera.setDisplayOrientation(result);
     }
 
     private int getCameraPictureRotation(int orientation) {
-        Camera.CameraInfo info = new Camera.CameraInfo();
-        Camera.getCameraInfo(cameraId, info);
-        int rotation;
+        CameraInfo info = new CameraInfo();
+        Camera.getCameraInfo(this.cameraId, info);
         orientation = (orientation + 45) / 90 * 90;
-        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+        int rotation;
+        if(info.facing == 1) {
             rotation = (info.orientation - orientation + 360) % 360;
-        } else { // back-facing camera
+        } else {
             rotation = (info.orientation + orientation) % 360;
         }
-        return (rotation);
+
+        return rotation;
     }
 
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        if (camera == null) {
-            return inflater.inflate(R.layout.fragment_no_camera, container, false);
-        }
-        View view = inflater.inflate(R.layout.fragment_camera, container, false);
-        try {
-            previewContainer = (ViewGroup) view.findViewById(R.id.camera_preview);
-        } catch (NullPointerException e) {
-            throw new RuntimeException("You should add container that extends ViewGroup for CameraPreview.");
-        }
-        if (useFaceDetectionTech){
-            faceDetectionCallback = new OnFaceDetectionCallback();
-        }
-        ImageView canvasFrame = new ImageView(activity);
-        cameraPreview = new CameraPreview(activity, camera, canvasFrame, faceDetectionCallback);
-        previewContainer.addView(cameraPreview);
-        previewContainer.addView(canvasFrame);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress);
-        mCaptureButton = (ImageButton) view.findViewById(R.id.capture);
-        mCaptureButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onCaptureClick();
+        if(this.camera == null) {
+            return inflater.inflate(layout.fragment_no_camera, container, false);
+        } else {
+            View view = inflater.inflate(layout.fragment_camera, container, false);
+
+            try {
+                this.previewContainer = (ViewGroup)view.findViewById(id.camera_preview);
+            } catch (NullPointerException var8) {
+                throw new RuntimeException("You should add container that extends ViewGroup for CameraPreview.");
             }
-        });
-        if(auto_take_photo){
-            progressBar.setVisibility(View.INVISIBLE);
-            mCaptureButton.setVisibility(View.INVISIBLE);
-            mCaptureButton.performClick();
+
+            if(this.useFaceDetectionTech) {
+                this.faceDetectionCallback = new CameraFragment.OnFaceDetectionCallback();
+            }
+
+            ImageView canvasFrame = new ImageView(this.activity);
+            this.cameraPreview = new CameraPreview(this.activity, this.camera, canvasFrame, this.faceDetectionCallback);
+            this.previewContainer.addView(this.cameraPreview);
+            this.previewContainer.addView(canvasFrame);
+            this.progressBar = (ProgressBar)view.findViewById(id.progress);
+            this.mCaptureButton = (ImageButton)view.findViewById(id.capture);
+            this.mCaptureButton.setOnClickListener(new OnClickListener() {
+                public void onClick(View v) {
+                    CameraFragment.this.onCaptureClick();
+                }
+            });
+            if(this.auto_take_photo) {
+                this.progressBar.setVisibility(View.INVISIBLE);
+                this.mCaptureButton.setVisibility(View.GONE);
+                this.mCaptureButton.performClick();
+            }
+
+            this.setPreviewContainerSize(this.mScreenWidth, this.mScreenHeight, this.ratio);
+            View controls = view.findViewById(id.controls_layout);
+            if(controls != null) {
+                LayoutParams params = new LayoutParams(-1, -1);
+                params.topMargin = this.mStatusBarHeight;
+                params.bottomMargin = this.mNavigationBarHeight;
+                controls.setLayoutParams(params);
+            }
+
+            return view;
         }
-        setPreviewContainerSize(mScreenWidth, mScreenHeight, ratio);
-        View controls = view.findViewById(R.id.controls_layout);
-        if (controls != null) {
-            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                    RelativeLayout.LayoutParams.MATCH_PARENT,
-                    RelativeLayout.LayoutParams.MATCH_PARENT);
-            params.topMargin = mStatusBarHeight;
-            params.bottomMargin = mNavigationBarHeight;
-            controls.setLayoutParams(params);
-        }
-        return view;
     }
 
-    public void onCaptureClick(){
-        if(!auto_take_photo) {
-            if (useFaceDetectionTech) {
-                if (supportedFaceDetection) {
-                    if (faceDetected) {
-                        takePhoto();
+    public void onCaptureClick() {
+        if(!this.auto_take_photo) {
+            if(this.useFaceDetectionTech) {
+                if(this.supportedFaceDetection) {
+                    if(this.faceDetected) {
+                        this.takePhoto();
                     } else {
-                        Toast.makeText(activity, R.string.face_not_detected, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this.activity, string.face_not_detected, Toast.LENGTH_LONG).show();
                     }
                 } else {
-                    takePhoto();
+                    this.takePhoto();
                 }
             } else {
-                takePhoto();
+                this.takePhoto();
             }
-        }else {
-            if(!isAuto_take_photo) {
-                isAuto_take_photo = true;
-                Toast.makeText(activity, "3秒后自动拍照...", Toast.LENGTH_SHORT).show();
-                Timer timer = new Timer();
-                TimerTask task = new TimerTask() {
-                    @Override
-                    public void run() {
-                        Log.w("拍照", "定时3秒拍照");
-                        camera.takePicture(null, rawPictureCallback, pictureCallback);
-                    }
-                };
-                timer.schedule(task, 3000);//3秒后执行TimeTask的run方法
-            }
+        } else if(!this.isAuto_take_photo) {
+            this.isAuto_take_photo = true;
+            Toast.makeText(this.activity, "3秒后自动拍照...", Toast.LENGTH_LONG).show();
+            Timer timer = new Timer();
+            TimerTask task = new TimerTask() {
+                public void run() {
+                    Log.w("拍照", "定时3秒拍照");
+                    CameraFragment.this.camera.takePicture((ShutterCallback)null, CameraFragment.this.rawPictureCallback, CameraFragment.this.pictureCallback);
+                }
+            };
+            timer.schedule(task, 3000L);
         }
+
     }
 
-    private void takePhoto(){
-        mCaptureButton.setEnabled(false);
-        mCaptureButton.setVisibility(View.INVISIBLE);
-
-        if (progressBar != null) {
-            progressBar.setVisibility(View.VISIBLE);
+    private void takePhoto() {
+        this.mCaptureButton.setEnabled(false);
+        this.mCaptureButton.setVisibility(View.INVISIBLE);
+        if(this.progressBar != null) {
+            this.progressBar.setVisibility(View.VISIBLE);
         }
-        camera.takePicture(null, rawPictureCallback, pictureCallback);
+
+        this.camera.takePicture((ShutterCallback)null, this.rawPictureCallback, this.pictureCallback);
     }
 
-    @Override
     public void photoSaved(String path, String name) {
-        if(!auto_take_photo) {
-            mCaptureButton.setEnabled(true);
-            mCaptureButton.setVisibility(View.VISIBLE);
+        if(!this.auto_take_photo) {
+            this.mCaptureButton.setEnabled(true);
+            this.mCaptureButton.setVisibility(View.VISIBLE);
         }
-        if (progressBar != null) {
-            progressBar.setVisibility(View.GONE);
+
+        if(this.progressBar != null) {
+            this.progressBar.setVisibility(View.GONE);
         }
+
     }
 
-    private Camera.PictureCallback pictureCallback = new Camera.PictureCallback() {
-
-        @Override
-        public void onPictureTaken(byte[] data, Camera camera) {
-            if (callback != null) {
-                callback.photoTaken(data.clone(), outputOrientation);
-            }
-            camera.startPreview();
-            cameraPreview.onPictureTaken();
-        }
-    };
-
-    private Camera.PictureCallback rawPictureCallback = new Camera.PictureCallback() {
-
-        @Override
-        public void onPictureTaken(byte[] data, Camera camera) {
-            if (rawCallback != null && data != null) {
-                rawCallback.rawPhotoTaken(data.clone());
-            }
-        }
-    };
-
-
-    @Override
     public void onResume() {
         super.onResume();
-        if (camera != null) {
+        if(this.camera != null) {
             try {
-                camera.reconnect();
-            } catch (IOException e) {
-                e.printStackTrace();
+                this.camera.reconnect();
+            } catch (IOException var2) {
+                var2.printStackTrace();
             }
         }
-        if (orientationListener == null) {
-            initOrientationListener();
+
+        if(this.orientationListener == null) {
+            this.initOrientationListener();
         }
-        orientationListener.enable();
+
+        this.orientationListener.enable();
     }
 
-    @Override
     public void onPause() {
         super.onPause();
-        if (orientationListener != null) {
-            orientationListener.disable();
-            orientationListener = null;
+        if(this.orientationListener != null) {
+            this.orientationListener.disable();
+            this.orientationListener = null;
         }
+
     }
 
-    @Override
     public void onDestroy() {
         super.onDestroy();
-        if (camera != null) {
-            camera.release();
-            camera = null;
+        if(this.camera != null) {
+            this.camera.release();
+            this.camera = null;
+        }
+
+    }
+
+    class OnFaceDetectionCallback implements FaceDetectionCallback {
+        OnFaceDetectionCallback() {
+        }
+
+        public void onFaceDetection(Face[] faces, Camera camera) {
+            if(faces.length > 0) {
+                Log.d("CameraFragment", "face0 top: " + faces[0].rect.top + ",  bottom: " + faces[0].rect.bottom + ", left: " + faces[0].rect.left + ", right: " + faces[0].rect.right);
+                CameraFragment.this.faceDetected = true;
+                CameraFragment.this.cameraPreview.drawFaceBounds(faces[0].rect, CameraFragment.this.useFrontCamera);
+            } else {
+                CameraFragment.this.faceDetected = false;
+                CameraFragment.this.cameraPreview.drawFaceBounds((Rect)null, CameraFragment.this.useFrontCamera);
+            }
+
+        }
+
+        public void onFaceDetectionNotSupport(Camera camera) {
+            CameraFragment.this.supportedFaceDetection = false;
+            Toast.makeText(CameraFragment.this.activity, string.face_detection_not_support, Toast.LENGTH_LONG).show();
+        }
+
+        public void onFaceDetectionStart(Camera camera) {
+            CameraFragment.this.supportedFaceDetection = true;
+        }
+
+        public void onFaceDetectionStop(Camera camera) {
         }
     }
 }
