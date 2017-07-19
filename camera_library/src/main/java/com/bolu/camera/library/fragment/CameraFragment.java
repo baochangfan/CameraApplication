@@ -220,6 +220,8 @@ public class CameraFragment extends Fragment implements PhotoSavedListener {
         this.camera.setParameters(this.parameters);
         if(this.camera_display_landscape) {
             this.toSetCameraDisplay(100, -1);
+        } else {
+            this.toSetCameraDisplay(0, -1);
         }
 
     }
